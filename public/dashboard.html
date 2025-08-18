@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MP Payment Links</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="8" fill="#009EE3"/>
+                        <path d="M20 10L28 16V26L20 30L12 26V16L20 10Z" fill="white"/>
+                    </svg>
+                    <span>MP Payment Links</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="storeName" class="store-name">Carregando...</span>
+                    <button id="logoutBtn" class="btn btn-secondary btn-sm">Sair</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <!-- Seção de Informações do Usuário -->
+            <div class="info-cards">
+                <div class="info-card">
+                    <h3>Informações da Conta</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Nome da Loja:</label>
+                            <span id="storeNameInfo">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>ID do Usuário:</label>
+                            <span id="userIdInfo" class="mono">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Criado em:</label>
+                            <span id="createdAtInfo">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Status:</label>
+                            <span class="status-badge status-active">Ativo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards de Estatísticas -->
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="totalLinks">0</span>
+                            <span class="stat-label">Links Criados</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="paidLinks">0</span>
+                            <span class="stat-label">Pagamentos Recebidos</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="pendingLinks">0</span>
+                            <span class="stat-label">Aguardando Pagamento</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="totalReceived">R$ 0,00</span>
+                            <span class="stat-label">Total Recebido</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Ações -->
+            <div class="actions-section">
+                <div class="section-header">
+                    <h2>Links de Pagamento</h2>
+                    <button id="createLinkBtn" class="btn btn-primary" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Criar Novo Link
+                    </button>
+                </div>
+                
+                <!-- Container para lista de links -->
+                <div id="links-container" class="links-container">
+                    <div class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e0" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <h3>Nenhum link criado ainda</h3>
+                        <p>Clique no botão acima para criar seu primeiro link de pagamento</p>
+                        <small class="text-muted">Esta funcionalidade será habilitada em breve</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mensagens de erro/sucesso -->
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+        </main>
+
+        <footer class="dashboard-footer">
+            <p>&copy; 2024 MP Payment Links - Dashboard v1.0</p>
+        </footer>
+    </div>
+
+    <!-- Modal de confirmação de logout (opcional) -->
+    <div id="logoutModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Confirmar Saída</h3>
+            <p>Tem certeza que deseja sair? Você precisará inserir suas credenciais novamente.</p>
+            <div class="modal-actions">
+                <button id="cancelLogout" class="btn btn-secondary">Cancelar</button>
+                <button id="confirmLogout" class="btn btn-danger">Sair</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
