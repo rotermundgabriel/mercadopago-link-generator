@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - MP Payment Links</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .logo p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .test-warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-warning h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-warning ul {
+            color: #856404;
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .test-warning li {
+            margin-bottom: 8px;
+        }
+        
+        .test-warning a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .test-warning a:hover {
+            text-decoration: underline;
+        }
+        
+        .warning-icon {
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .input-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .credential-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .credential-type.test {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .credential-type.prod {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .submit-button {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .submit-button:hover {
+            background: #5a67d8;
+        }
+        
+        .submit-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+        
+        .validation-feedback {
+            margin-top: 5px;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .validation-feedback.valid {
+            color: #28a745;
+            display: block;
+        }
+        
+        .validation-feedback.invalid {
+            color: #dc3545;
+            display: block;
+        }
+        
+        .help-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .help-section h4 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .help-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .help-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .help-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .logo h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🔗 MP Payment Links</h1>
+            <p>Configure suas credenciais do Mercado Pago</p>
+        </div>
+        
+        <!-- Aviso sobre credenciais de teste -->
+        <div class="test-warning">
+            <h3>
+                <span class="warning-icon">⚠️</span>
+                IMPORTANTE: Use Credenciais de Teste!
+            </h3>
+            <p>Para desenvolvimento e testes, você DEVE usar credenciais de teste:</p>
+            <ul>
+                <li>Public Key de teste começa com: <strong>TEST-</strong></li>
+                <li>Access Token de teste começa com: <strong>TEST-</strong></li>
+                <li>Credenciais de produção (APP_USR-) NÃO funcionam em localhost</li>
+            </ul>
+            <p style="margin-top: 15px;">
+                <strong>Como obter credenciais de teste:</strong><br>
+                1. Acesse o <a href="https://www.mercadopago.com.br/developers/panel" target="_blank">Painel do Desenvolvedor</a><br>
+                2. Selecione sua aplicação<br>
+                3. Vá em "Credenciais de teste"<br>
+                4. Copie as chaves TEST-
+            </p>
+        </div>
+        
+        <!-- Mensagens de feedback -->
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+        
+        <!-- Formulário -->
+        <form id="setupForm">
+            <div class="form-group">
+                <label for="storeName">
+                    Nome da Loja
+                </label>
+                <input 
+                    type="text" 
+                    id="storeName" 
+                    name="storeName" 
+                    placeholder="Ex: Minha Loja Online"
+                    required
+                >
+                <div class="input-hint">Este nome aparecerá para seus clientes</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="publicKey">
+                    Public Key (Chave Pública)
+                    <span id="publicKeyType" class="credential-type"></span>
+                </label>
+                <input 
+                    type="text" 
+                    id="publicKey" 
+                    name="publicKey" 
+                    placeholder="TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    required
+                >
+                <div id="publicKeyFeedback" class="validation-feedback"></div>
+                <div class="input-hint">Sua chave pública do Mercado Pago (deve começar com TEST-)</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="accessToken">
+                    Access Token (Token de Acesso)
+                    <span id="accessTokenType" class="credential-type"></span>
+                </label>
+                <input 
+                    type="text" 
+                    id="accessToken" 
+                    name="accessToken" 
+                    placeholder="TEST-xxxxxxxxxxxx..."
+                    required
+                >
+                <div id="accessTokenFeedback" class="validation-feedback"></div>
+                <div class="input-hint">Seu token de acesso do Mercado Pago (deve começar com TEST-)</div>
+            </div>
+            
+            <button type="submit" class="submit-button" id="submitButton">
+                Salvar e Continuar
+            </button>
+        </form>
+        
+        <!-- Seção de ajuda -->
+        <div class="help-section">
+            <h4>Precisa de ajuda?</h4>
+            <div class="help-links">
+                <a href="https://www.mercadopago.com.br/developers/pt/docs/credentials" target="_blank" class="help-link">
+                    📚 Documentação sobre Credenciais
+                </a>
+                <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" class="help-link">
+                    🔑 Acessar Painel do Desenvolvedor
+                </a>
+                <a href="https://www.mercadopago.com.br/developers/pt/support" target="_blank" class="help-link">
+                    💬 Suporte do Mercado Pago
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Validação em tempo real das credenciais
+        const publicKeyInput = document.getElementById('publicKey');
+        const accessTokenInput = document.getElementById('accessToken');
+        const publicKeyType = document.getElementById('publicKeyType');
+        const accessTokenType = document.getElementById('accessTokenType');
+        const publicKeyFeedback = document.getElementById('publicKeyFeedback');
+        const accessTokenFeedback = document.getElementById('accessTokenFeedback');
+        
+        // Validar Public Key
+        publicKeyInput.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            
+            if (value.length > 10) {
+                if (value.startsWith('TEST-')) {
+                    publicKeyType.textContent = 'TESTE ✓';
+                    publicKeyType.className = 'credential-type test';
+                    publicKeyFeedback.textContent = '✓ Credencial de teste detectada (correto para desenvolvimento)';
+                    publicKeyFeedback.className = 'validation-feedback valid';
+                } else if (value.startsWith('APP_USR-')) {
+                    publicKeyType.textContent = 'PRODUÇÃO ✗';
+                    publicKeyType.className = 'credential-type prod';
+                    publicKeyFeedback.textContent = '✗ Credencial de produção não funciona em localhost! Use TEST-';
+                    publicKeyFeedback.className = 'validation-feedback invalid';
+                } else {
+                    publicKeyType.textContent = '';
+                    publicKeyFeedback.textContent = '✗ Formato inválido. Deve começar com TEST-';
+                    publicKeyFeedback.className = 'validation-feedback invalid';
+                }
+            } else {
+                publicKeyType.textContent = '';
+                publicKeyFeedback.textContent = '';
+                publicKeyFeedback.className = 'validation-feedback';
+            }
+        });
+        
+        // Validar Access Token
+        accessTokenInput.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            
+            if (value.length > 10) {
+                if (value.startsWith('TEST-')) {
+                    accessTokenType.textContent = 'TESTE ✓';
+                    accessTokenType.className = 'credential-type test';
+                    accessTokenFeedback.textContent = '✓ Credencial de teste detectada (correto para desenvolvimento)';
+                    accessTokenFeedback.className = 'validation-feedback valid';
+                } else if (value.startsWith('APP_USR-')) {
+                    accessTokenType.textContent = 'PRODUÇÃO ✗';
+                    accessTokenType.className = 'credential-type prod';
+                    accessTokenFeedback.textContent = '✗ Credencial de produção não funciona em localhost! Use TEST-';
+                    accessTokenFeedback.className = 'validation-feedback invalid';
+                } else {
+                    accessTokenType.textContent = '';
+                    accessTokenFeedback.textContent = '✗ Formato inválido. Deve começar com TEST-';
+                    accessTokenFeedback.className = 'validation-feedback invalid';
+                }
+            } else {
+                accessTokenType.textContent = '';
+                accessTokenFeedback.textContent = '';
+                accessTokenFeedback.className = 'validation-feedback';
+            }
+        });
+        
+        // Processar formulário
+        document.getElementById('setupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const storeName = document.getElementById('storeName').value.trim();
+            const publicKey = document.getElementById('publicKey').value.trim();
+            const accessToken = document.getElementById('accessToken').value.trim();
+            
+            // Validação final
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            if (isLocalhost) {
+                // Em desenvolvimento, forçar uso de credenciais de teste
+                if (!publicKey.startsWith('TEST-') || !accessToken.startsWith('TEST-')) {
+                    showError('Em desenvolvimento local, você DEVE usar credenciais de TESTE (começam com TEST-)');
+                    return;
+                }
+            }
+            
+            // Desabilitar botão
+            const submitButton = document.getElementById('submitButton');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Salvando...';
+            
+            try {
+                const response = await fetch('/api/setup-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        storeName,
+                        publicKey,
+                        accessToken
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Salvar userId no localStorage
+                    localStorage.setItem('userId', data.userId);
+                    localStorage.setItem('storeName', storeName);
+                    
+                    showSuccess('Configuração salva com sucesso! Redirecionando...');
+                    
+                    // Redirecionar para o dashboard
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                } else {
+                    showError(data.error || 'Erro ao salvar configuração');
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Salvar e Continuar';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showError('Erro de conexão. Tente novamente.');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Salvar e Continuar';
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+        }
+        
+        // Verificar se já tem configuração
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+            // Já configurado, pode redirecionar para dashboard
+            const redirect = confirm('Você já tem uma configuração salva. Deseja ir para o Dashboard?');
+            if (redirect) {
+                window.location.href = '/dashboard';
+            }
+        }
+    </script>
+</body>
+</html>
