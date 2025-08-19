@@ -12,15 +12,22 @@ const linkId = window.location.pathname.split('/').pop();
  * Inicialização ao carregar a página
  */
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Iniciando checkout para link:', linkId);
+    
     try {
         // Carregar dados do link
         await loadLinkData();
         
-        // Inicializar Mercado Pago e Payment Brick
-        await initializeMercadoPago();
+        // Só inicializar se tivermos os dados necessários
+        if (linkData && linkData.publicKey) {
+            // Inicializar Mercado Pago e Payment Brick
+            await initializeMercadoPago();
+        } else {
+            throw new Error('Dados do link incompletos ou public_key ausente');
+        }
         
     } catch (error) {
-        console.error('Erro na inicialização:', error);
+        console.error('❌ Erro na inicialização:', error);
         showError('Erro ao carregar página de pagamento. Por favor, recarregue a página.');
     }
 });
@@ -29,9 +36,13 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Carrega os dados do link de pagamento
  */
 async function loadLinkData() {
+    console.log('📋 Carregando dados do link...');
+    
     try {
         const response = await fetch(`/api/payment-link/${linkId}`);
         const data = await response.json();
+        
+        console.log('📦 Resposta da API:', data);
         
         if (!response.ok) {
             if (data.status === 'paid') {
@@ -42,7 +53,31 @@ async function loadLinkData() {
             throw new Error(data.error || 'Erro ao carregar link');
         }
         
+        // Validar dados essenciais
+        if (!data.publicKey) {
+            console.error('❌ Public Key não encontrada na resposta:', data);
+            throw new Error('Public Key não encontrada. Verifique as credenciais do vendedor.');
+        }
+        
+        // Validar se é credencial de teste em desenvolvimento
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            if (!data.publicKey.startsWith('TEST-')) {
+                console.warn('⚠️ ATENÇÃO: Você está usando credenciais de PRODUÇÃO em ambiente de desenvolvimento!');
+                console.warn('⚠️ Use credenciais de TESTE (começam com TEST-) para desenvolvimento local.');
+                showWarning('Use credenciais de TESTE do Mercado Pago para desenvolvimento local.');
+            } else {
+                console.log('✅ Usando credenciais de TESTE (correto para desenvolvimento)');
+            }
+        }
+        
         linkData = data;
+        
+        console.log('✅ Dados do link carregados:', {
+            id: data.id,
+            storeName: data.storeName,
+            amount: data.amount,
+            publicKey: data.publicKey.substring(0, 20) + '...' // Log parcial por segurança
+        });
         
         // Atualizar UI com dados do link
         document.getElementById('storeName').textContent = data.storeName;
@@ -53,7 +88,7 @@ async function loadLinkData() {
         document.title = `Pagar ${formatCurrency(data.amount)} - ${data.storeName}`;
         
     } catch (error) {
-        console.error('Erro ao carregar dados do link:', error);
+        console.error('❌ Erro ao carregar dados do link:', error);
         throw error;
     }
 }
@@ -62,20 +97,28 @@ async function loadLinkData() {
  * Inicializa o SDK do Mercado Pago e cria o Payment Brick
  */
 async function initializeMercadoPago() {
+    console.log('🔧 Inicializando Mercado Pago...');
+    
     try {
         if (!linkData || !linkData.publicKey) {
-            throw new Error('Chave pública não encontrada');
+            throw new Error('Public Key não disponível');
         }
+        
+        console.log('🔑 Inicializando com Public Key:', linkData.publicKey.substring(0, 20) + '...');
         
         // Inicializar SDK
         mp = new MercadoPago(linkData.publicKey, {
             locale: 'pt-BR'
         });
         
+        console.log('✅ MercadoPago SDK inicializado');
+        
         bricksBuilder = mp.bricks();
         
-        // Criar Payment Brick
-        paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', {
+        console.log('🧱 Criando Payment Brick...');
+        
+        // Configuração do Payment Brick
+        const brickConfig = {
             initialization: {
                 amount: linkData.amount,
                 payer: {
@@ -95,7 +138,7 @@ async function initializeMercadoPago() {
                     creditCard: 'all',
                     debitCard: 'all',
                     ticket: false, // Boleto desabilitado
-                    pix: true,
+                    bankTransfer: 'all', // PIX habilitado
                     mercadoPago: false,
                     atm: false,
                     maxInstallments: 12
@@ -103,23 +146,63 @@ async function initializeMercadoPago() {
             },
             callbacks: {
                 onReady: () => {
-                    console.log('Payment Brick carregado');
+                    console.log('✅ Payment Brick carregado e pronto!');
                     // Remover loading
-                    document.querySelector('.loading-container').style.display = 'none';
+                    const loadingContainer = document.querySelector('.loading-container');
+                    if (loadingContainer) {
+                        loadingContainer.style.display = 'none';
+                    }
                 },
                 onSubmit: async (formData) => {
+                    console.log('📤 Formulário submetido:', formData);
                     // Processar pagamento
                     return await processPayment(formData);
                 },
                 onError: (error) => {
-                    console.error('Erro no Payment Brick:', error);
-                    showError('Erro no formulário de pagamento. Por favor, tente novamente.');
+                    console.error('❌ Erro no Payment Brick:', error);
+                    
+                    // Tratar erros específicos
+                    let errorMessage = 'Erro no formulário de pagamento.';
+                    
+                    if (error.message) {
+                        if (error.message.includes('invalid_public_key')) {
+                            errorMessage = 'Chave pública inválida. Verifique as credenciais.';
+                        } else if (error.message.includes('network')) {
+                            errorMessage = 'Erro de conexão. Verifique sua internet.';
+                        } else {
+                            errorMessage = error.message;
+                        }
+                    }
+                    
+                    showError(errorMessage + ' Por favor, tente novamente.');
                 }
             }
-        });
+        };
+        
+        console.log('📋 Configuração do Brick:', brickConfig);
+        
+        // Criar Payment Brick
+        paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', brickConfig);
+        
+        console.log('✅ Payment Brick criado com sucesso!');
         
     } catch (error) {
-        console.error('Erro ao inicializar Mercado Pago:', error);
+        console.error('❌ Erro ao inicializar Mercado Pago:', error);
+        
+        // Mensagem de erro mais específica
+        let errorMessage = 'Erro ao inicializar sistema de pagamento.';
+        
+        if (error.message) {
+            if (error.message.includes('public_key') || error.message.includes('Public Key')) {
+                errorMessage = 'Credenciais do Mercado Pago inválidas. Contacte o vendedor.';
+            } else if (error.message.includes('MercadoPago is not defined')) {
+                errorMessage = 'Erro ao carregar SDK do Mercado Pago. Recarregue a página.';
+            } else {
+                errorMessage = error.message;
+            }
+        }
+        
+        showError(errorMessage);
         throw error;
     }
 }
@@ -129,7 +212,12 @@ async function initializeMercadoPago() {
  */
 async function processPayment(formData) {
     try {
-        console.log('Processando pagamento...', formData);
+        console.log('💳 Processando pagamento...');
+        console.log('📦 Dados do pagamento:', {
+            payment_method_id: formData.payment_method_id,
+            installments: formData.installments,
+            payer_email: formData.payer?.email
+        });
         
         // Mostrar loading
         showLoading();
@@ -148,18 +236,19 @@ async function processPayment(formData) {
         
         const result = await response.json();
         
+        console.log('📨 Resposta do servidor:', result);
+        
         if (result.success) {
-            console.log('Pagamento processado:', result);
-            
             // Verificar status do pagamento
             if (result.status === 'approved') {
-                // Pagamento aprovado
+                console.log('✅ Pagamento aprovado!');
                 showSuccess();
                 setTimeout(() => {
                     window.location.href = `/checkout/success.html?payment=${result.paymentId}`;
                 }, 2000);
                 
             } else if (result.status === 'pending' || result.status === 'in_process') {
+                console.log('⏳ Pagamento pendente');
                 // Pagamento pendente (geralmente PIX)
                 if (result.pixQrCode || result.pixQrCodeBase64) {
                     showPixPayment(result);
@@ -170,7 +259,7 @@ async function processPayment(formData) {
                 }
                 
             } else if (result.status === 'rejected') {
-                // Pagamento rejeitado
+                console.log('❌ Pagamento rejeitado:', result.detail);
                 hideLoading();
                 showError(getErrorMessage(result.detail));
                 return {
@@ -184,6 +273,7 @@ async function processPayment(formData) {
             
         } else {
             // Erro no processamento
+            console.error('❌ Erro no processamento:', result);
             hideLoading();
             showError(result.error || 'Erro ao processar pagamento');
             return {
@@ -192,7 +282,7 @@ async function processPayment(formData) {
         }
         
     } catch (error) {
-        console.error('Erro ao processar pagamento:', error);
+        console.error('❌ Erro ao processar pagamento:', error);
         hideLoading();
         showError('Erro de conexão. Por favor, tente novamente.');
         return {
@@ -205,6 +295,7 @@ async function processPayment(formData) {
  * Mostra informações de pagamento PIX
  */
 function showPixPayment(paymentData) {
+    console.log('📱 Mostrando pagamento PIX');
     hideLoading();
     
     // Esconder o Payment Brick
@@ -237,7 +328,7 @@ function showPixPayment(paymentData) {
 /**
  * Copia o código PIX para a área de transferência
  */
-function copyPixCode() {
+window.copyPixCode = function() {
     const pixCode = document.getElementById('pixCode').textContent;
     
     if (pixCode) {
@@ -252,7 +343,22 @@ function copyPixCode() {
             }, 3000);
         }).catch(err => {
             console.error('Erro ao copiar:', err);
-            alert('Erro ao copiar código. Por favor, selecione e copie manualmente.');
+            // Fallback para browsers antigos
+            const textArea = document.createElement('textarea');
+            textArea.value = pixCode;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            const button = document.getElementById('copyPixButton');
+            button.textContent = '✅ Código copiado!';
+            button.classList.add('copied');
+            
+            setTimeout(() => {
+                button.textContent = '📋 Copiar código PIX';
+                button.classList.remove('copied');
+            }, 3000);
         });
     }
 }
@@ -261,14 +367,18 @@ function copyPixCode() {
  * Inicia polling para verificar status do PIX
  */
 function startPixPolling() {
+    console.log('🔄 Iniciando polling do PIX...');
+    
     // Verificar status a cada 5 segundos
     pixPollingInterval = setInterval(async () => {
         try {
             const response = await fetch(`/api/payment-status/${linkId}`);
             const data = await response.json();
             
+            console.log('🔍 Status do pagamento:', data);
+            
             if (data.isPaid) {
-                // Pagamento confirmado!
+                console.log('✅ Pagamento PIX confirmado!');
                 clearInterval(pixPollingInterval);
                 showSuccess();
                 setTimeout(() => {
@@ -284,6 +394,7 @@ function startPixPolling() {
     setTimeout(() => {
         if (pixPollingInterval) {
             clearInterval(pixPollingInterval);
+            console.log('⏰ Polling do PIX expirado');
             showError('Tempo de pagamento expirado. Por favor, tente novamente.');
         }
     }, 30 * 60 * 1000);
@@ -308,25 +419,54 @@ function showPendingMessage() {
 }
 
 /**
+ * Mostra aviso
+ */
+function showWarning(message) {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        text-align: center;
+    `;
+    warningDiv.innerHTML = `
+        <strong>⚠️ Atenção:</strong> ${message}<br>
+        <small>Obtenha credenciais de teste em: 
+            <a href="https://www.mercadopago.com.br/developers/panel" target="_blank">
+                Painel do Desenvolvedor MP
+            </a>
+        </small>
+    `;
+    
+    const container = document.querySelector('.checkout-body');
+    if (container) {
+        container.insertBefore(warningDiv, container.firstChild);
+    }
+}
+
+/**
  * Mostra loading
  */
 function showLoading() {
-    // Você pode adicionar um overlay de loading aqui se quiser
-    console.log('Processando pagamento...');
+    console.log('⏳ Mostrando loading...');
 }
 
 /**
  * Esconde loading
  */
 function hideLoading() {
-    // Esconder overlay de loading se houver
-    console.log('Loading removido');
+    console.log('✅ Loading removido');
 }
 
 /**
  * Mostra mensagem de erro
  */
 function showError(message) {
+    console.error('🚨 Erro:', message);
+    
     const errorContainer = document.getElementById('errorContainer');
     const errorMessage = document.getElementById('errorMessage');
     
@@ -346,6 +486,7 @@ function showError(message) {
  * Mostra mensagem de sucesso
  */
 function showSuccess() {
+    console.log('🎉 Mostrando sucesso!');
     document.getElementById('successMessage').classList.add('show');
     document.getElementById('payment-brick-container').style.display = 'none';
     document.getElementById('pixInfo').classList.remove('show');
