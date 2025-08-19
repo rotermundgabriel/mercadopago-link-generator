@@ -4,135 +4,352 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - MP Payment Links</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .store-name {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-left: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-card.primary .stat-value {
+            color: #667eea;
+        }
+
+        .stat-card.success .stat-value {
+            color: #4caf50;
+        }
+
+        .stat-card.info .stat-value {
+            color: #2196f3;
+        }
+
+        .links-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            margin-bottom: 20px;
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .refresh-icon {
+            cursor: pointer;
+            font-size: 20px;
+            color: #667eea;
+            transition: transform 0.3s;
+        }
+
+        .refresh-icon:hover {
+            transform: rotate(180deg);
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+
+            .btn {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <header class="header">
+        <div class="header-content">
+            <h1>
+                💳 MP Payment Links
+                <span class="store-name" id="storeName"></span>
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="createLinkBtn">
+                    ➕ Criar Novo Link
+                </button>
+                <button class="btn btn-secondary" id="refreshBtn" title="Atualizar">
+                    🔄
+                </button>
+                <button class="btn btn-secondary" id="logoutBtn">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
     <div class="container">
-        <header class="dashboard-header">
-            <div class="header-left">
-                <div class="logo">
-                    <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
-                        <rect width="40" height="40" rx="8" fill="#009EE3"/>
-                        <path d="M20 10L28 16V26L20 30L12 26V16L20 10Z" fill="white"/>
-                    </svg>
-                    <span>MP Payment Links</span>
+        <!-- Estatísticas -->
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <div class="stat-label">
+                    📊 Total de Links
                 </div>
+                <div class="stat-value" id="totalLinks">0</div>
             </div>
-            <div class="header-right">
-                <div class="user-info">
-                    <span id="storeName" class="store-name">Carregando...</span>
-                    <button id="logoutBtn" class="btn btn-secondary btn-sm">Sair</button>
+            <div class="stat-card success">
+                <div class="stat-label">
+                    💰 Total Recebido
                 </div>
+                <div class="stat-value" id="totalReceived">R$ 0,00</div>
             </div>
-        </header>
-
-        <main class="dashboard-main">
-            <!-- Seção de Informações do Usuário -->
-            <div class="info-cards">
-                <div class="info-card">
-                    <h3>Informações da Conta</h3>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>Nome da Loja:</label>
-                            <span id="storeNameInfo">-</span>
-                        </div>
-                        <div class="info-item">
-                            <label>ID do Usuário:</label>
-                            <span id="userIdInfo" class="mono">-</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Criado em:</label>
-                            <span id="createdAtInfo">-</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Status:</label>
-                            <span class="status-badge status-active">Ativo</span>
-                        </div>
-                    </div>
+            <div class="stat-card info">
+                <div class="stat-label">
+                    ✅ Links Pagos
                 </div>
+                <div class="stat-value" id="paidLinks">0</div>
+            </div>
+        </div>
 
-                <!-- Cards de Estatísticas -->
-                <div class="stats-cards">
-                    <div class="stat-card">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="totalLinks">0</span>
-                            <span class="stat-label">Links Criados</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">✅</div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="paidLinks">0</span>
-                            <span class="stat-label">Pagamentos Recebidos</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">⏳</div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="pendingLinks">0</span>
-                            <span class="stat-label">Aguardando Pagamento</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="totalReceived">R$ 0,00</span>
-                            <span class="stat-label">Total Recebido</span>
-                        </div>
-                    </div>
-                </div>
+        <!-- Tabela de Links -->
+        <div class="links-section">
+            <div class="section-header">
+                <h2 class="section-title">Seus Links de Pagamento</h2>
             </div>
 
-            <!-- Seção de Ações -->
-            <div class="actions-section">
-                <div class="section-header">
-                    <h2>Links de Pagamento</h2>
-                    <button id="createLinkBtn" class="btn btn-primary" disabled>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Criar Novo Link
-                    </button>
-                </div>
-                
-                <!-- Container para lista de links -->
-                <div id="links-container" class="links-container">
-                    <div class="empty-state">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e0" stroke-width="2">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                        <h3>Nenhum link criado ainda</h3>
-                        <p>Clique no botão acima para criar seu primeiro link de pagamento</p>
-                        <small class="text-muted">Esta funcionalidade será habilitada em breve</small>
-                    </div>
-                </div>
+            <!-- Loading State -->
+            <div class="loading-state" id="loadingState" style="display: none;">
+                <div class="spinner"></div>
+                <p>Carregando seus links...</p>
             </div>
 
-            <!-- Mensagens de erro/sucesso -->
-            <div class="error-message" id="errorMessage"></div>
-            <div class="success-message" id="successMessage"></div>
-        </main>
-
-        <footer class="dashboard-footer">
-            <p>&copy; 2024 MP Payment Links - Dashboard v1.0</p>
-        </footer>
-    </div>
-
-    <!-- Modal de confirmação de logout (opcional) -->
-    <div id="logoutModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h3>Confirmar Saída</h3>
-            <p>Tem certeza que deseja sair? Você precisará inserir suas credenciais novamente.</p>
-            <div class="modal-actions">
-                <button id="cancelLogout" class="btn btn-secondary">Cancelar</button>
-                <button id="confirmLogout" class="btn btn-danger">Sair</button>
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-state-icon">📭</div>
+                <h3>Nenhum link criado ainda</h3>
+                <p>Crie seu primeiro link de pagamento para começar a receber!</p>
+                <button class="btn btn-primary" onclick="window.location.href='/create-link.html'">
+                    Criar Primeiro Link
+                </button>
             </div>
+
+            <!-- Tabela de Links -->
+            <table id="linksTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="linksTableBody">
+                    <!-- Links serão inseridos aqui via JavaScript -->
+                </tbody>
+            </table>
         </div>
     </div>
 
+    <script src="/js/utils.js"></script>
     <script src="/js/dashboard.js"></script>
 </body>
 </html>
