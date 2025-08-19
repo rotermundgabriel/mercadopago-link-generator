@@ -1,378 +1,401 @@
 // dashboard.js - Lógica do dashboard com listagem de links
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Elementos do DOM
-    const storeNameElement = document.getElementById('storeName');
-    const totalLinksElement = document.getElementById('totalLinks');
-    const totalReceivedElement = document.getElementById('totalReceived');
-    const paidLinksElement = document.getElementById('paidLinks');
-    const linksTableBody = document.getElementById('linksTableBody');
-    const emptyState = document.getElementById('emptyState');
-    const linksTable = document.getElementById('linksTable');
-    const loadingState = document.getElementById('loadingState');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const createLinkBtn = document.getElementById('createLinkBtn');
+let links = [];
+let refreshInterval = null;
 
-    // Verificar autenticação
-    const userId = getUserId();
-    const storeName = getStoreName();
+// Inicializar dashboard
+document.addEventListener('DOMContentLoaded', () => {
+    const userId = localStorage.getItem('userId');
+    const storeName = localStorage.getItem('storeName');
     
     if (!userId) {
+        alert('Você precisa configurar suas credenciais primeiro!');
         window.location.href = '/';
         return;
     }
-
-    // Definir nome da loja
-    if (storeNameElement && storeName) {
-        storeNameElement.textContent = storeName;
+    
+    // Exibir nome da loja
+    if (storeName) {
+        const storeNameElement = document.getElementById('storeName');
+        if (storeNameElement) {
+            storeNameElement.textContent = storeName;
+        }
     }
-
-    // Carregar links ao iniciar
+    
+    // Carregar links
     loadLinks();
-
-    // Auto-refresh a cada 30 segundos
-    let autoRefreshInterval = setInterval(loadLinks, 30000);
-
-    // Botão de refresh manual
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            // Adicionar animação de rotação
-            refreshBtn.style.animation = 'spin 1s';
-            setTimeout(() => {
-                refreshBtn.style.animation = '';
-            }, 1000);
-            
-            loadLinks();
-            showNotification('Dashboard atualizado!', 'success', 2000);
-        });
-    }
-
-    // Botão criar novo link
-    if (createLinkBtn) {
-        createLinkBtn.addEventListener('click', function() {
-            window.location.href = '/create-link.html';
-        });
-    }
-
-    // Botão de logout
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (confirm('Tem certeza que deseja sair?')) {
-                clearUserData();
-                window.location.href = '/';
-            }
-        });
-    }
-
-    // Função para carregar links
-    async function loadLinks() {
-        try {
-            // Mostrar loading apenas na primeira vez
-            if (linksTableBody && linksTableBody.children.length === 0 && loadingState) {
-                loadingState.style.display = 'block';
-                if (emptyState) emptyState.style.display = 'none';
-                if (linksTable) linksTable.style.display = 'none';
-            }
-
-            const response = await fetch(`/api/links/${userId}`);
-            const data = await response.json();
-
-            if (data.success) {
-                updateDashboard(data);
-            } else {
-                console.error('Erro ao carregar links:', data.error);
-                showNotification('Erro ao carregar links', 'error');
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            showNotification('Erro ao conectar com o servidor', 'error');
-        } finally {
-            if (loadingState) loadingState.style.display = 'none';
-        }
-    }
-
-    // Função para atualizar dashboard
-    function updateDashboard(data) {
-        // Atualizar estatísticas
-        if (totalLinksElement) {
-            totalLinksElement.textContent = data.stats.totalLinks;
-        }
-        if (totalReceivedElement) {
-            totalReceivedElement.textContent = formatCurrency(data.stats.totalReceived);
-        }
-        if (paidLinksElement) {
-            paidLinksElement.textContent = data.stats.paidLinks;
-        }
-
-        // Atualizar nome da loja se não estiver definido
-        if (storeNameElement && data.store_name) {
-            storeNameElement.textContent = data.store_name;
-            saveStoreName(data.store_name);
-        }
-
-        // Atualizar tabela de links
-        if (linksTableBody) {
-            renderLinksTable(data.links);
-        }
-    }
-
-    // Função para renderizar tabela de links
-    function renderLinksTable(links) {
-        // Limpar tabela
-        linksTableBody.innerHTML = '';
-
-        // Verificar se há links
-        if (links.length === 0) {
-            if (emptyState) emptyState.style.display = 'block';
-            if (linksTable) linksTable.style.display = 'none';
-            return;
-        }
-
-        // Mostrar tabela e esconder empty state
-        if (emptyState) emptyState.style.display = 'none';
-        if (linksTable) linksTable.style.display = 'table';
-
-        // Adicionar cada link à tabela
-        links.forEach(link => {
-            const row = createLinkRow(link);
-            linksTableBody.appendChild(row);
-        });
-    }
-
-    // Função para criar linha da tabela
-    function createLinkRow(link) {
-        const row = document.createElement('tr');
-        
-        // Determinar classe baseada no status
-        if (link.status === 'paid') {
-            row.className = 'paid-row';
-        }
-
-        row.innerHTML = `
-            <td>
-                <div class="link-description">
-                    ${truncateText(link.description, 40)}
-                </div>
-                <div class="link-id">#${link.id.substring(0, 8)}</div>
-            </td>
-            <td class="amount-cell">
-                ${formatCurrency(link.amount)}
-            </td>
-            <td>
-                ${createStatusBadge(link.status)}
-            </td>
-            <td class="date-cell">
-                <div>${formatRelativeDate(link.created_at)}</div>
-                <small>${formatDate(link.created_at)}</small>
-            </td>
-            <td class="actions-cell">
-                <button class="btn-icon copy-btn" data-link="${generatePaymentUrl(link.id)}" title="Copiar link">
-                    📋
-                </button>
-                <button class="btn-icon view-btn" data-link="${generatePaymentUrl(link.id)}" title="Abrir link">
-                    🔗
-                </button>
-                ${link.status === 'pending' ? `
-                    <button class="btn-icon cancel-btn" data-id="${link.id}" title="Cancelar link">
-                        ❌
-                    </button>
-                ` : ''}
-            </td>
-        `;
-
-        // Adicionar event listeners aos botões
-        const copyBtn = row.querySelector('.copy-btn');
-        const viewBtn = row.querySelector('.view-btn');
-        const cancelBtn = row.querySelector('.cancel-btn');
-
-        if (copyBtn) {
-            copyBtn.addEventListener('click', async function() {
-                const linkUrl = this.dataset.link;
-                try {
-                    await copyToClipboard(linkUrl);
-                    
-                    // Feedback visual
-                    const originalContent = this.innerHTML;
-                    this.innerHTML = '✓';
-                    this.style.background = '#4caf50';
-                    this.style.color = 'white';
-                    
-                    setTimeout(() => {
-                        this.innerHTML = originalContent;
-                        this.style.background = '';
-                        this.style.color = '';
-                    }, 2000);
-                    
-                    showNotification('Link copiado!', 'success', 2000);
-                } catch (error) {
-                    showNotification('Erro ao copiar link', 'error');
-                }
-            });
-        }
-
-        if (viewBtn) {
-            viewBtn.addEventListener('click', function() {
-                const linkUrl = this.dataset.link;
-                window.open(linkUrl, '_blank');
-            });
-        }
-
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', async function() {
-                const linkId = this.dataset.id;
-                if (confirm('Tem certeza que deseja cancelar este link?')) {
-                    await cancelLink(linkId);
-                }
-            });
-        }
-
-        return row;
-    }
-
-    // Função para cancelar link
-    async function cancelLink(linkId) {
-        try {
-            const response = await fetch(`/api/link/${linkId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ userId })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                showNotification('Link cancelado com sucesso', 'success');
-                loadLinks(); // Recarregar lista
-            } else {
-                showNotification(data.error || 'Erro ao cancelar link', 'error');
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            showNotification('Erro ao conectar com o servidor', 'error');
-        }
-    }
-
-    // Cleanup ao sair da página
-    window.addEventListener('beforeunload', function() {
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-        }
-    });
+    
+    // Auto-refresh a cada 10 segundos para atualizar status
+    refreshInterval = setInterval(loadLinks, 10000);
 });
 
-// Adicionar estilos CSS dinamicamente para badges e animações
-const style = document.createElement('style');
-style.textContent = `
-    .badge {
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: inline-block;
+// Limpar interval ao sair da página
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
     }
+});
+
+async function loadLinks() {
+    const userId = localStorage.getItem('userId');
+    const linksContainer = document.getElementById('linksContainer');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const emptyState = document.getElementById('emptyState');
+    const summaryContainer = document.getElementById('summaryContainer');
     
-    .badge-warning {
-        background: #fff3cd;
-        color: #856404;
-    }
-    
-    .badge-success {
-        background: #d4edda;
-        color: #155724;
-    }
-    
-    .badge-danger {
-        background: #f8d7da;
-        color: #721c24;
-    }
-    
-    .badge-secondary {
-        background: #e2e3e5;
-        color: #383d41;
-    }
-    
-    .link-description {
-        font-weight: 500;
-        color: #333;
-    }
-    
-    .link-id {
-        font-size: 11px;
-        color: #999;
-        margin-top: 2px;
-        font-family: monospace;
-    }
-    
-    .amount-cell {
-        font-weight: 600;
-        color: #2e7d32;
-        font-size: 15px;
-    }
-    
-    .date-cell small {
-        color: #999;
-        font-size: 11px;
-    }
-    
-    .actions-cell {
-        display: flex;
-        gap: 8px;
-    }
-    
-    .btn-icon {
-        width: 32px;
-        height: 32px;
-        border: 1px solid #ddd;
-        background: white;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-    }
-    
-    .btn-icon:hover {
-        background: #f5f5f5;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .paid-row {
-        background: #f0f9ff;
-    }
-    
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
+    try {
+        // Mostrar loading apenas na primeira vez
+        if (links.length === 0 && loadingIndicator) {
+            loadingIndicator.style.display = 'block';
         }
-        to {
-            transform: translateX(0);
-            opacity: 1;
+        
+        const response = await fetch(`/api/links/${userId}`);
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Erro ao carregar links');
         }
+        
+        links = data.links;
+        
+        // Esconder loading
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+        
+        // Atualizar summary
+        updateSummary(data.summary);
+        
+        // Renderizar links
+        if (links.length === 0) {
+            // Mostrar estado vazio
+            if (emptyState) {
+                emptyState.style.display = 'block';
+            }
+            linksContainer.innerHTML = '';
+        } else {
+            // Esconder estado vazio
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+            renderLinks();
+        }
+        
+    } catch (error) {
+        console.error('Erro ao carregar links:', error);
+        
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+        
+        linksContainer.innerHTML = `
+            <div class="error-card">
+                <p>❌ Erro ao carregar links</p>
+                <small>${error.message}</small>
+                <button onclick="loadLinks()" class="retry-btn">Tentar Novamente</button>
+            </div>
+        `;
+    }
+}
+
+function updateSummary(summary) {
+    const summaryContainer = document.getElementById('summaryContainer');
+    if (!summaryContainer || !summary) return;
+    
+    summaryContainer.innerHTML = `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-icon">🔗</div>
+                <div class="summary-content">
+                    <div class="summary-value">${summary.totalLinks}</div>
+                    <div class="summary-label">Links Criados</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">✅</div>
+                <div class="summary-content">
+                    <div class="summary-value">${summary.paidLinks}</div>
+                    <div class="summary-label">Pagamentos Recebidos</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">💰</div>
+                <div class="summary-content">
+                    <div class="summary-value">${formatCurrency(summary.totalReceived)}</div>
+                    <div class="summary-label">Total Recebido</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderLinks() {
+    const linksContainer = document.getElementById('linksContainer');
+    
+    const linksHTML = links.map(link => {
+        const linkUrl = `${window.location.origin}/pay/${link.id}`;
+        const statusClass = getStatusClass(link.status);
+        const statusLabel = getStatusLabel(link.status);
+        const statusIcon = getStatusIcon(link.status);
+        
+        return `
+            <div class="link-card ${statusClass}">
+                <div class="link-header">
+                    <div class="link-status">
+                        <span class="status-icon">${statusIcon}</span>
+                        <span class="status-label">${statusLabel}</span>
+                    </div>
+                    <div class="link-amount">${formatCurrency(link.amount)}</div>
+                </div>
+                
+                <div class="link-description">${escapeHtml(link.description)}</div>
+                
+                <div class="link-info">
+                    <div class="link-date">
+                        📅 Criado em ${formatDate(link.created_at)}
+                    </div>
+                    ${link.paid_at ? `
+                        <div class="link-date">
+                            ✅ Pago em ${formatDate(link.paid_at)}
+                        </div>
+                    ` : ''}
+                    ${link.payment_method ? `
+                        <div class="payment-method">
+                            💳 ${formatPaymentMethod(link.payment_method)}
+                        </div>
+                    ` : ''}
+                    ${link.payer_email ? `
+                        <div class="payer-info">
+                            📧 ${escapeHtml(link.payer_email)}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="link-actions">
+                    ${link.status === 'pending' ? `
+                        <button class="btn-copy" onclick="copyLinkUrl('${link.id}')">
+                            📋 Copiar Link
+                        </button>
+                        <button class="btn-view" onclick="openLink('${link.id}')">
+                            👁️ Ver Checkout
+                        </button>
+                        <button class="btn-delete" onclick="deleteLink('${link.id}')">
+                            🗑️ Excluir
+                        </button>
+                    ` : `
+                        ${link.payment_id ? `
+                            <div class="payment-id">
+                                ID Pagamento: ${link.payment_id}
+                            </div>
+                        ` : ''}
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    linksContainer.innerHTML = linksHTML;
+}
+
+function getStatusClass(status) {
+    const classes = {
+        'pending': 'status-pending',
+        'paid': 'status-paid',
+        'expired': 'status-expired',
+        'cancelled': 'status-cancelled'
+    };
+    return classes[status] || 'status-pending';
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        'pending': 'Aguardando Pagamento',
+        'paid': 'Pago',
+        'expired': 'Expirado',
+        'cancelled': 'Cancelado'
+    };
+    return labels[status] || status;
+}
+
+function getStatusIcon(status) {
+    const icons = {
+        'pending': '⏳',
+        'paid': '✅',
+        'expired': '⌛',
+        'cancelled': '❌'
+    };
+    return icons[status] || '⏳';
+}
+
+function formatPaymentMethod(method) {
+    const methods = {
+        'credit_card': 'Cartão de Crédito',
+        'debit_card': 'Cartão de Débito',
+        'pix': 'PIX',
+        'bank_slip': 'Boleto'
+    };
+    return methods[method] || method;
+}
+
+function copyLinkUrl(linkId) {
+    const linkUrl = `${window.location.origin}/pay/${linkId}`;
+    
+    navigator.clipboard.writeText(linkUrl).then(() => {
+        showToast('Link copiado para a área de transferência!');
+    }).catch(err => {
+        // Fallback para browsers antigos
+        const textArea = document.createElement('textarea');
+        textArea.value = linkUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            showToast('Link copiado para a área de transferência!');
+        } catch (err) {
+            alert('Erro ao copiar. Link: ' + linkUrl);
+        }
+        
+        document.body.removeChild(textArea);
+    });
+}
+
+function openLink(linkId) {
+    const linkUrl = `${window.location.origin}/pay/${linkId}`;
+    window.open(linkUrl, '_blank');
+}
+
+async function deleteLink(linkId) {
+    if (!confirm('Tem certeza que deseja excluir este link?')) {
+        return;
     }
     
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
+    const userId = localStorage.getItem('userId');
+    
+    try {
+        const response = await fetch(`/api/link/${linkId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userId })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Erro ao deletar link');
         }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
+        
+        showToast('Link excluído com sucesso!');
+        
+        // Recarregar links
+        loadLinks();
+        
+    } catch (error) {
+        console.error('Erro ao deletar link:', error);
+        showToast('Erro ao excluir link: ' + error.message, 'error');
     }
-`;
-document.head.appendChild(style);
+}
+
+function showToast(message, type = 'success') {
+    // Remover toast anterior se existir
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Criar novo toast
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    // Adicionar ao body
+    document.body.appendChild(toast);
+    
+    // Animar entrada
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+}
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    
+    // Se for menos de 1 minuto
+    if (diffMinutes < 1) {
+        return 'Agora mesmo';
+    }
+    
+    // Se for menos de 1 hora
+    if (diffHours < 1) {
+        return `Há ${diffMinutes} ${diffMinutes === 1 ? 'minuto' : 'minutos'}`;
+    }
+    
+    // Se for menos de 24 horas
+    if (diffHours < 24) {
+        return `Há ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`;
+    }
+    
+    // Se for menos de 7 dias
+    if (diffDays < 7) {
+        return `Há ${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`;
+    }
+    
+    // Caso contrário, mostrar data completa
+    return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Função para criar novo link (botão do dashboard)
+function createNewLink() {
+    window.location.href = '/create-link.html';
+}
+
+// Função para fazer logout
+function logout() {
+    if (confirm('Tem certeza que deseja sair?')) {
+        localStorage.clear();
+        window.location.href = '/';
+    }
+}
