@@ -12,68 +12,82 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir arquivos estáticos
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static('public'));
 app.use('/js', express.static(path.join(__dirname, '../public/js')));
-app.use('/vendor', express.static(path.join(__dirname, '../public/vendor')));
+app.use('/css', express.static(path.join(__dirname, '../public/css')));
+app.use('/assets', express.static(path.join(__dirname, '../public/assets')));
 
-// Importar rotas
+// Inicializar banco de dados
+const db = require('./services/database');
+
+// Rotas da API
 const setupRoutes = require('./routes/setup');
 const linksRoutes = require('./routes/links');
 const paymentRoutes = require('./routes/payment');
 
-// Usar rotas
-app.use(setupRoutes);
-app.use(linksRoutes);
-app.use(paymentRoutes);
+app.use('/api', setupRoutes);
+app.use('/api', linksRoutes);
+app.use('/', paymentRoutes); // Payment routes incluem /pay/:linkId
 
 // Rotas de páginas HTML
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/vendor/index.html'));
 });
 
+app.get('/setup', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/vendor/index.html'));
+});
+
 app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+    res.sendFile(path.join(__dirname, '../public/vendor/dashboard.html'));
 });
 
 app.get('/create-link', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/create-link.html'));
+    res.sendFile(path.join(__dirname, '../public/vendor/create-link.html'));
 });
 
-app.get('/pay/:linkId', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/checkout/pay.html'));
-});
-
-app.get('/success', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/checkout/success.html'));
-});
-
-// Rota de health check
+// Health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', message: 'MP Payment Links está funcionando!' });
-});
-
-// Error handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        success: false,
-        error: 'Algo deu errado no servidor!'
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
     });
 });
 
-// 404 handler
+// Tratamento de erros 404
 app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Rota não encontrada'
+    res.status(404).sendFile(path.join(__dirname, '../public/checkout/404.html'));
+});
+
+// Tratamento de erros globais
+app.use((err, req, res, next) => {
+    console.error('Erro não tratado:', err);
+    res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📍 Acesse: http://localhost:${PORT}`);
-    console.log(`💳 MP Payment Links - Sistema de Links de Pagamento`);
+    console.log(`
+    🚀 Servidor rodando na porta ${PORT}
+    📍 URL local: http://localhost:${PORT}
+    
+    Rotas disponíveis:
+    - Setup: http://localhost:${PORT}/setup
+    - Dashboard: http://localhost:${PORT}/dashboard
+    - Criar Link: http://localhost:${PORT}/create-link
+    - Checkout: http://localhost:${PORT}/pay/:linkId
+    
+    API Endpoints:
+    - POST /api/setup-user
+    - GET  /api/user/:userId
+    - POST /api/links
+    - GET  /api/links/:userId
+    - GET  /api/payment-link/:linkId
+    - POST /api/process-payment
+    - GET  /api/payment-status/:linkId
+    `);
 });
-
-module.exports = app;
