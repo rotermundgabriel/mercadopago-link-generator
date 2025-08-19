@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-const simplePaymentRoutes = require('./src/routes/simple-payment');
+const simplePaymentRoutes = require('./src/routes/simplepayment');
 app.use('/', simplePaymentRoutes);
 
 // Inicializar banco de dados
