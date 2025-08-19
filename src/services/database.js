@@ -2,158 +2,118 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// Caminho do banco de dados (na raiz do projeto)
-const DB_PATH = path.join(__dirname, '..', '..', 'database.db');
+// Caminho do banco de dados
+const dbPath = path.join(__dirname, '../../database.db');
 
-let db;
-let isReady = false;
-
-try {
-  // Inicializar conexão com SQLite
-  console.log('📂 Inicializando banco de dados...');
-  console.log(`📍 Caminho do banco: ${DB_PATH}`);
-  
-  db = new Database(DB_PATH);
-  
-  // Configurações para melhor performance
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('cache_size = 1000');
-  db.pragma('foreign_keys = ON');
-  
-  // Executar schema SQL para criar tabelas
-  initializeSchema();
-  
-  isReady = true;
-  console.log('✅ Banco de dados inicializado com sucesso!');
-  
-} catch (error) {
-  console.error('❌ Erro ao inicializar banco de dados:', error);
-  isReady = false;
+// Criar diretório se não existir
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
 }
 
-function initializeSchema() {
-  console.log('📋 Criando tabelas do banco...');
-  
-  // Schema SQL do banco
-  const schema = `
-    -- Tabela de usuários (vendedores)
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      store_name TEXT NOT NULL,
-      access_token TEXT NOT NULL,
-      public_key TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+// Inicializar banco
+const db = new Database(dbPath);
 
-    -- Tabela de links de pagamento
-    CREATE TABLE IF NOT EXISTS payment_links (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      description TEXT NOT NULL,
-      amount REAL NOT NULL,
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'paid', 'expired', 'cancelled')),
-      payment_id TEXT,
-      payer_email TEXT,
-      payment_method TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      paid_at DATETIME,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
+// Habilitar foreign keys
+db.pragma('foreign_keys = ON');
 
-    -- Índices para melhorar performance
-    CREATE INDEX IF NOT EXISTS idx_user_links ON payment_links(user_id);
-    CREATE INDEX IF NOT EXISTS idx_link_status ON payment_links(status);
-    CREATE INDEX IF NOT EXISTS idx_link_created ON payment_links(created_at);
+// Criar tabelas
+const createTables = () => {
+    // Tabela de usuários
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            store_name TEXT NOT NULL,
+            access_token TEXT NOT NULL,
+            public_key TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
 
-    -- Tabela de webhooks/notificações (opcional mas útil)
-    CREATE TABLE IF NOT EXISTS payment_notifications (
-      id TEXT PRIMARY KEY,
-      link_id TEXT NOT NULL,
-      mp_notification_id TEXT,
-      status TEXT,
-      data TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (link_id) REFERENCES payment_links(id)
-    );
-  `;
-  
-  try {
-    // Executar cada comando SQL separadamente
-    const statements = schema.split(';').filter(stmt => stmt.trim());
-    
-    for (const statement of statements) {
-      if (statement.trim()) {
-        db.exec(statement.trim() + ';');
-      }
-    }
-    
+    // Tabela de links de pagamento
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS payment_links (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            description TEXT NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'paid', 'expired', 'cancelled')),
+            payment_id TEXT,
+            payer_email TEXT,
+            payment_method TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            paid_at DATETIME,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
+    // Tabela de notificações (opcional)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS payment_notifications (
+            id TEXT PRIMARY KEY,
+            link_id TEXT NOT NULL,
+            mp_notification_id TEXT,
+            status TEXT,
+            data TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (link_id) REFERENCES payment_links(id)
+        )
+    `);
+
+    // Criar índices para melhorar performance
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_user_links ON payment_links(user_id);
+        CREATE INDEX IF NOT EXISTS idx_link_status ON payment_links(status);
+        CREATE INDEX IF NOT EXISTS idx_link_created ON payment_links(created_at);
+    `);
+
     console.log('✅ Tabelas criadas com sucesso!');
-    
-    // Verificar se as tabelas foram criadas
-    const tables = db.prepare(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' AND name NOT LIKE 'sqlite_%'
-      ORDER BY name
-    `).all();
-    
-    console.log('📊 Tabelas disponíveis:', tables.map(t => t.name).join(', '));
-    
-  } catch (error) {
-    console.error('❌ Erro ao criar schema:', error);
-    throw error;
-  }
-}
-
-// Função para executar script de inicialização manual
-function initDatabase() {
-  if (!isReady) {
-    throw new Error('Banco de dados não está pronto');
-  }
-  
-  console.log('🔄 Reinicializando schema do banco...');
-  initializeSchema();
-  console.log('✅ Banco reinicializado!');
-}
-
-// Função para fechar conexão (útil em testes)
-function closeDatabase() {
-  if (db) {
-    db.close();
-    console.log('🔒 Conexão com banco fechada');
-  }
-}
-
-// Função para obter estatísticas do banco
-function getStats() {
-  if (!isReady) return null;
-  
-  try {
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const linkCount = db.prepare('SELECT COUNT(*) as count FROM payment_links').get().count;
-    const paidCount = db.prepare("SELECT COUNT(*) as count FROM payment_links WHERE status = 'paid'").get().count;
-    
-    return {
-      users: userCount,
-      links: linkCount,
-      paid_links: paidCount
-    };
-  } catch (error) {
-    console.error('Erro ao obter estatísticas:', error);
-    return null;
-  }
-}
-
-// Exportar instância do banco e funções utilitárias
-module.exports = {
-  db,
-  isReady,
-  initDatabase,
-  closeDatabase,
-  getStats
 };
 
-// Se executado diretamente (npm run init-db)
+// Função para verificar se o banco está configurado
+const checkDatabase = () => {
+    try {
+        const tables = db.prepare(`
+            SELECT name FROM sqlite_master 
+            WHERE type='table' 
+            AND name IN ('users', 'payment_links', 'payment_notifications')
+        `).all();
+
+        if (tables.length < 3) {
+            console.log('📦 Inicializando banco de dados...');
+            createTables();
+        } else {
+            console.log('✅ Banco de dados já configurado');
+        }
+
+        // Mostrar estatísticas
+        const stats = db.prepare(`
+            SELECT 
+                (SELECT COUNT(*) FROM users) as total_users,
+                (SELECT COUNT(*) FROM payment_links) as total_links,
+                (SELECT COUNT(*) FROM payment_links WHERE status = 'paid') as paid_links
+        `).get();
+
+        console.log('📊 Estatísticas do banco:');
+        console.log(`   - Usuários: ${stats.total_users}`);
+        console.log(`   - Links totais: ${stats.total_links}`);
+        console.log(`   - Links pagos: ${stats.paid_links}`);
+
+    } catch (error) {
+        console.error('❌ Erro ao verificar banco:', error);
+        process.exit(1);
+    }
+};
+
+// Executar se for chamado diretamente
 if (require.main === module) {
-  initDatabase();
+    console.log('🔧 Configurando banco de dados...');
+    checkDatabase();
+    db.close();
+    console.log('✅ Configuração concluída!');
+} else {
+    // Se importado como módulo, apenas verificar
+    checkDatabase();
 }
+
+module.exports = db;
