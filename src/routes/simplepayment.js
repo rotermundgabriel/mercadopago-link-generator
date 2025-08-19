@@ -66,7 +66,7 @@ router.get('/test-info', (req, res) => {
             platform: process.platform,
             uptime: process.uptime(),
             environment: process.env.NODE_ENV || 'development',
-            publicKeyTest: 'TEST-0c5f5f3d-5fed-4c88-858b-d74b5d6fd928',
+            publicKeyTest: 'TEST-64acc395-1ece-4a66-b144-925dbbd60c14',
             testAmount: 10.00,
             description: 'Rota simplificada para teste do Payment Brick'
         }
