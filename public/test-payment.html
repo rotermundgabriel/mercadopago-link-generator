@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Payment Brick - R$ 10,00</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Mercado Pago SDK -->
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    
+    <style>
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .status-indicator {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .status-loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status-success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info-box {
+            background-color: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        #payment-brick-container {
+            min-height: 400px;
+            border: 2px dashed #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+        }
+        
+        .console-log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="test-container">
+            
+            <!-- Cabeçalho do Teste -->
+            <div class="text-center mb-4">
+                <h1>🧪 Teste Payment Brick</h1>
+                <p class="text-muted">Versão simplificada para diagnóstico</p>
+            </div>
+            
+            <!-- Status do Teste -->
+            <div id="status" class="status-indicator status-loading">
+                🔄 Carregando SDK do Mercado Pago...
+            </div>
+            
+            <!-- Informações do Teste -->
+            <div class="info-box">
+                <h5>📋 Detalhes do Teste</h5>
+                <ul class="mb-0">
+                    <li><strong>Valor:</strong> R$ 10,00 (fixo)</li>
+                    <li><strong>Public Key:</strong> TEST-0c5f5f3d-5fed-4c88-858b-d74b5d6fd928</li>
+                    <li><strong>Ambiente:</strong> Teste (Sandbox)</li>
+                    <li><strong>Dependências:</strong> Nenhuma (HTML estático)</li>
+                </ul>
+            </div>
+            
+            <!-- Container do Payment Brick -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">💳 Payment Brick</h5>
+                </div>
+                <div class="card-body">
+                    <div id="payment-brick-container">
+                        <div class="text-center text-muted">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Aguardando Payment Brick...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Log do Console -->
+            <div class="mt-4">
+                <h6>📝 Log do Console:</h6>
+                <div id="console-log" class="console-log"></div>
+            </div>
+            
+            <!-- Botões de Ação -->
+            <div class="text-center mt-4">
+                <button class="btn btn-primary me-2" onclick="window.location.reload()">
+                    🔄 Recarregar Teste
+                </button>
+                <button class="btn btn-outline-secondary" onclick="clearLog()">
+                    🗑️ Limpar Log
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // Log personalizado que mostra no console e na tela
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const logContainer = document.getElementById('console-log');
+        
+        function addToLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.color = type === 'error' ? '#dc3545' : '#495057';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addToLog(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+        
+        function clearLog() {
+            logContainer.innerHTML = '';
+        }
+        
+        function updateStatus(message, type = 'loading') {
+            const statusElement = document.getElementById('status');
+            statusElement.className = `status-indicator status-${type}`;
+            statusElement.textContent = message;
+        }
+        
+        // Variáveis globais
+        let mp = null;
+        let bricksBuilder = null;
+        let paymentBrickController = null;
+        
+        // Configurações do teste
+        const TEST_CONFIG = {
+            publicKey: 'TEST-0c5f5f3d-5fed-4c88-858b-d74b5d6fd928',
+            amount: 10.00,
+            locale: 'pt-BR'
+        };
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Iniciando teste do Payment Brick');
+            console.log('📋 Configuração:', TEST_CONFIG);
+            
+            try {
+                await initializeTest();
+            } catch (error) {
+                console.error('❌ Erro no teste:', error);
+                updateStatus('❌ Erro: ' + error.message, 'error');
+            }
+        });
+        
+        async function initializeTest() {
+            // Verificar se SDK carregou
+            if (typeof MercadoPago === 'undefined') {
+                throw new Error('SDK do Mercado Pago não carregou. Verifique sua conexão.');
+            }
+            
+            console.log('✅ SDK do Mercado Pago carregado');
+            updateStatus('🔧 Inicializando Mercado Pago...', 'loading');
+            
+            // Inicializar SDK
+            mp = new MercadoPago(TEST_CONFIG.publicKey, {
+                locale: TEST_CONFIG.locale
+            });
+            
+            console.log('✅ MercadoPago SDK inicializado');
+            
+            // Obter Bricks Builder
+            bricksBuilder = mp.bricks();
+            console.log('✅ Bricks Builder obtido');
+            
+            updateStatus('🧱 Criando Payment Brick...', 'loading');
+            
+            // Configuração do Payment Brick
+            const brickConfig = {
+                initialization: {
+                    amount: TEST_CONFIG.amount,
+                    payer: {
+                        email: ''
+                    }
+                },
+                customization: {
+                    visual: {
+                        style: {
+                            theme: 'bootstrap',
+                            customVariables: {
+                                baseColor: '#0d6efd'
+                            }
+                        }
+                    },
+                    paymentMethods: {
+                        creditCard: 'all',
+                        debitCard: 'all',
+                        ticket: false,
+                        bankTransfer: 'all', // PIX
+                        mercadoPago: false,
+                        atm: false,
+                        maxInstallments: 12
+                    }
+                },
+                callbacks: {
+                    onReady: () => {
+                        console.log('✅ Payment Brick pronto!');
+                        updateStatus('✅ Payment Brick carregado com sucesso!', 'success');
+                    },
+                    onSubmit: async (formData) => {
+                        console.log('📤 Formulário submetido:', formData);
+                        updateStatus('📤 Teste de submissão realizado!', 'success');
+                        
+                        // Não processar pagamento real, apenas log
+                        alert('✅ Teste OK! Payment Brick está funcionando.\n\nDados capturados:\n' + JSON.stringify(formData, null, 2));
+                        
+                        return new Promise((resolve) => {
+                            setTimeout(() => {
+                                resolve();
+                            }, 1000);
+                        });
+                    },
+                    onError: (error) => {
+                        console.error('❌ Erro no Payment Brick:', error);
+                        updateStatus('❌ Erro no Payment Brick: ' + error.message, 'error');
+                    }
+                }
+            };
+            
+            console.log('📋 Configuração do Brick:', brickConfig);
+            
+            // Criar Payment Brick
+            paymentBrickController = await bricksBuilder.create('payment', 'payment-brick-container', brickConfig);
+            
+            console.log('🎉 Payment Brick criado com sucesso!');
+        }
+        
+        // Cleanup ao sair da página
+        window.addEventListener('beforeunload', () => {
+            if (paymentBrickController) {
+                console.log('🧹 Destruindo Payment Brick...');
+                paymentBrickController.unmount();
+            }
+        });
+    </script>
+</body>
+</html>
